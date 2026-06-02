@@ -1,0 +1,1106 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Pacifico&display=swap');
+
+:root {
+  --bg-primary: #07030d;
+  --bg-secondary: #1a0b2e;
+  --accent-purple: #9c27b0;
+  --accent-pink: #e91e63;
+  --accent-gold: #ffb300;
+  --accent-cyan: #00bcd4;
+  --text-main: #f3ecf9;
+  --text-muted: #a69bb0;
+  --glass-bg: rgba(25, 12, 45, 0.5);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-shadow: 0 16px 32px rgba(0, 0, 0, 0.4);
+  --font-sans: 'Outfit', sans-serif;
+  --font-hand: 'Pacifico', cursive;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--bg-primary);
+  color: var(--text-main);
+  overflow: hidden; /* Prevent scrolling during step transitions */
+  min-height: 100vh;
+  position: relative;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--glass-border);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-purple);
+}
+
+/* Ambient Background Stars & Glow */
+#bg-stars {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 50%, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+}
+
+/* Fullscreen Confetti Canvas */
+#confetti-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+/* ========================================== */
+/* Step / Screen Container Styles             */
+/* ========================================== --> */
+.screen-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  display: none;
+  opacity: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  padding: 1.5rem;
+  pointer-events: none;
+  transform: scale(0.95) translateY(20px);
+  transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1), display 0.8s allow-discrete;
+}
+
+.screen-container.active {
+  display: flex;
+  opacity: 1;
+  transform: scale(1) translateY(0);
+  pointer-events: auto;
+  z-index: 20;
+}
+
+.screen-container.fade-out {
+  display: flex;
+  opacity: 0;
+  transform: scale(1.05) translateY(-30px);
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* Glassmorphic Panel Design */
+.panel {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 24px;
+  padding: 2rem;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: var(--glass-shadow);
+  display: flex;
+  flex-direction: column;
+  transition: box-shadow 0.3s ease;
+  width: 100%;
+}
+
+.panel:hover {
+  box-shadow: 0 20px 40px rgba(156, 39, 176, 0.2);
+}
+
+.panel-header {
+  margin-bottom: 1.5rem;
+}
+
+.step-indicator {
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--accent-pink);
+  letter-spacing: 3px;
+  margin-bottom: 0.25rem;
+}
+
+.panel-title {
+  font-size: 1.65rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  background: linear-gradient(90deg, #fff 0%, var(--text-muted) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.panel-title span.emoji {
+  -webkit-text-fill-color: initial;
+}
+
+.panel-subtitle {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+
+.panel-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 1.25rem;
+}
+
+/* ========================================== */
+/* Stage 1: Invitation Design                 */
+/* ========================================== */
+.invitation-badge {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 0.5rem 1.25rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--accent-pink);
+  letter-spacing: 2px;
+  margin-bottom: 1.5rem;
+  text-transform: uppercase;
+  display: inline-block;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+}
+
+.gift-box-container {
+  position: relative;
+  width: 220px;
+  height: 220px;
+  margin: 0 auto 2.5rem;
+  cursor: pointer;
+  perspective: 1000px;
+  filter: drop-shadow(0 15px 30px rgba(156, 39, 176, 0.4));
+  animation: float 4s ease-in-out infinite;
+}
+
+.gift-box-container:hover {
+  animation-play-state: paused;
+}
+
+.gift-box {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.gift-box-container:hover .gift-box {
+  transform: scale(1.05) rotateY(15deg);
+}
+
+.gift-side {
+  position: absolute;
+  width: 180px;
+  height: 180px;
+  left: 20px;
+  top: 20px;
+  background: linear-gradient(135deg, var(--accent-pink), var(--accent-purple));
+  border-radius: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.gift-lid {
+  position: absolute;
+  width: 200px;
+  height: 40px;
+  left: 10px;
+  top: 10px;
+  background: linear-gradient(135deg, #f06292, #ba68c8);
+  border-radius: 6px;
+  z-index: 5;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+  transition: transform 0.5s ease;
+  transform-origin: top left;
+}
+
+.gift-box-container:hover .gift-lid {
+  transform: rotate(-15deg) translateY(-25px);
+}
+
+.gift-ribbon-v {
+  position: absolute;
+  top: 0;
+  left: calc(50% - 15px);
+  width: 30px;
+  height: 100%;
+  background: linear-gradient(to bottom, #ffe082, var(--accent-gold));
+  z-index: 2;
+}
+
+.gift-ribbon-h {
+  position: absolute;
+  top: calc(50% - 15px);
+  left: 0;
+  width: 100%;
+  height: 30px;
+  background: linear-gradient(to right, #ffe082, var(--accent-gold));
+  z-index: 2;
+}
+
+.gift-bow {
+  position: absolute;
+  top: -20px;
+  left: calc(50% - 35px);
+  width: 70px;
+  height: 40px;
+  z-index: 6;
+}
+
+.gift-bow::before, .gift-bow::after {
+  content: '';
+  position: absolute;
+  width: 35px;
+  height: 35px;
+  border: 10px solid var(--accent-gold);
+  border-radius: 50% 50% 0 50%;
+  transform: rotate(-45deg);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.gift-bow::after {
+  left: 25px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(45deg);
+}
+
+.intro-title {
+  font-family: var(--font-hand);
+  font-size: 3rem;
+  color: #fff;
+  margin-bottom: 1rem;
+  text-shadow: 0 0 15px rgba(233, 30, 99, 0.6), 0 0 30px rgba(156, 39, 176, 0.4);
+}
+
+.intro-subtitle {
+  font-size: 1.1rem;
+  color: var(--text-muted);
+  margin-bottom: 2rem;
+  letter-spacing: 2px;
+}
+
+.btn-open {
+  background: linear-gradient(90deg, var(--accent-pink) 0%, var(--accent-purple) 100%);
+  color: white;
+  border: none;
+  padding: 1rem 2.5rem;
+  border-radius: 30px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: 1px;
+  cursor: pointer;
+  box-shadow: 0 0 20px rgba(233, 30, 99, 0.4);
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.btn-open:hover {
+  transform: scale(1.08);
+  box-shadow: 0 0 30px rgba(233, 30, 99, 0.7), 0 0 10px var(--accent-purple);
+}
+
+/* ========================================== */
+/* Stage 2: Memories Panel                    */
+/* ========================================== */
+.memories-panel {
+  max-width: 950px;
+  height: 85vh;
+  max-height: 680px;
+}
+
+.polaroids-wrapper {
+  position: relative;
+  flex-grow: 1;
+  width: 100%;
+  margin-top: 1rem;
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.15);
+  border: 1px dashed rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+}
+
+.polaroids-canvas {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+/* Draggable Polaroid Card */
+.polaroid {
+  position: absolute;
+  width: 200px;
+  background-color: #ffffff;
+  padding: 10px 10px 30px 10px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+  border-radius: 4px;
+  cursor: grab;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, scale 0.2s ease;
+  user-select: none;
+  transform-origin: center center;
+  touch-action: none;
+}
+
+.polaroid:active {
+  cursor: grabbing;
+}
+
+.polaroid-img-container {
+  width: 100%;
+  aspect-ratio: 1;
+  background-color: #eee;
+  overflow: hidden;
+  border-radius: 2px;
+  margin-bottom: 8px;
+  pointer-events: none;
+}
+
+.polaroid img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.polaroid-caption {
+  font-family: var(--font-hand);
+  color: #2b2b2b;
+  font-size: 0.85rem;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.btn-next {
+  background: linear-gradient(90deg, var(--accent-purple) 0%, var(--accent-pink) 100%);
+  color: white;
+  border: none;
+  padding: 0.75rem 2rem;
+  border-radius: 20px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(233, 30, 99, 0.3);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.btn-next:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(233, 30, 99, 0.5);
+}
+
+/* ========================================== */
+/* Stage 3: Cake Panel                        */
+/* ========================================== */
+.cake-panel {
+  max-width: 520px;
+  align-items: center;
+}
+
+.cake-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+.mic-status-container {
+  margin-bottom: 1.5rem;
+  padding: 0.5rem 1.25rem;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.mic-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: var(--accent-pink);
+}
+
+.mic-dot.active {
+  background-color: #4caf50;
+  box-shadow: 0 0 10px #4caf50;
+  animation: pulse 1.5s infinite;
+}
+
+.mic-dot.blow-detected {
+  background-color: var(--accent-gold);
+  box-shadow: 0 0 15px var(--accent-gold);
+  transform: scale(1.3);
+}
+
+.cake-svg-wrapper {
+  width: 290px;
+  height: 290px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  cursor: pointer;
+  user-select: none;
+}
+
+.candle-flame {
+  animation: flicker 1.5s ease-in-out infinite alternate;
+  transform-origin: bottom center;
+  transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+  cursor: pointer;
+}
+
+.candle-flame.extinguished {
+  opacity: 0;
+  transform: scale(0);
+  pointer-events: none;
+}
+
+.cake-hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-align: center;
+  margin-top: 1.5rem;
+  line-height: 1.4;
+}
+
+/* ========================================== */
+/* Stage 4: Floating Wishes Stage             */
+/* ========================================== */
+.screen-container.fullscreen-stage {
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: stretch;
+  padding: 2rem;
+  background: transparent;
+}
+
+.wishes-stage-header {
+  text-align: center;
+  margin-bottom: 1rem;
+  z-index: 25;
+}
+
+.stage-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  background: linear-gradient(90deg, #fff 0%, var(--text-muted) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+}
+
+/* Floating Bubble Arena */
+.bubbles-arena {
+  flex-grow: 1;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 24px;
+  background: rgba(10, 5, 20, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  margin-top: 1rem;
+}
+
+/* Interactive Floating Blessing Bubble */
+.wish-bubble {
+  position: absolute;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #ffffff;
+  border: 1.5px solid rgba(255, 255, 255, 0.22);
+  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.45) 0%, rgba(255, 182, 193, 0.15) 50%, rgba(233, 30, 99, 0.4) 100%);
+  box-shadow: 
+    0 10px 25px rgba(233, 30, 99, 0.25), 
+    inset 0 4px 10px rgba(255, 255, 255, 0.5), 
+    inset 0 -4px 10px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  /* Transition scale independently to avoid conflicting with inline transform position updates */
+  transition: scale 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s ease, filter 0.2s ease;
+  user-select: none;
+  text-align: center;
+  padding: 1.2rem;
+  z-index: 30;
+  will-change: transform, scale;
+  overflow: hidden;
+}
+
+.wish-bubble:hover {
+  /* Use standalone scale to avoid overriding inline transform (translate3d position) */
+  scale: 1.15;
+  box-shadow: 
+    0 15px 35px rgba(233, 30, 99, 0.45), 
+    inset 0 4px 15px rgba(255, 255, 255, 0.7), 
+    inset 0 -4px 15px rgba(0, 0, 0, 0.2);
+  filter: brightness(1.15);
+  z-index: 50;
+}
+
+.wish-bubble:active {
+  /* Use standalone scale to avoid overriding inline transform (translate3d position) */
+  scale: 0.95;
+}
+
+.wish-bubble-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.wish-bubble-sender {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin-bottom: 0.25rem;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+  border-bottom: 1px solid rgba(255,255,255,0.2);
+  padding-bottom: 0.15rem;
+  width: 85%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wish-bubble-avatar {
+  font-size: 1.8rem;
+  margin-bottom: 0.25rem;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15));
+}
+
+.wish-bubble-text {
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: rgba(255,255,255,0.95);
+  text-shadow: 0 1px 3px rgba(0,0,0,0.45);
+  word-break: break-word;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  width: 85%;
+  margin: 0 auto;
+}
+
+/* ========================================== */
+/* Dialog Modals                              */
+/* ========================================== */
+dialog#birthday-letter {
+  margin: auto;
+  border: none;
+  background: transparent;
+  outline: none;
+  z-index: 10000;
+  max-width: 620px;
+  width: 90%;
+  padding: 1rem;
+}
+
+.letter-envelope {
+  background-color: #f7eed7;
+  color: #4e3620;
+  border-radius: 20px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  border: 8px double #d7c59b;
+  padding: 2.5rem;
+  position: relative;
+  background-image: 
+    radial-gradient(var(--accent-pink) 9%, transparent 10%),
+    radial-gradient(var(--accent-pink) 9%, transparent 10%);
+  background-size: 24px 24px;
+  background-position: 0 0, 12px 12px;
+  background-color: rgba(247, 238, 215, 0.95);
+}
+
+.letter-paper {
+  background: #fdfbf7;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: inset 0 0 20px rgba(0,0,0,0.05), 0 4px 10px rgba(0,0,0,0.1);
+  min-height: 320px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.letter-title {
+  font-family: var(--font-hand);
+  font-size: 2rem;
+  margin-bottom: 1.25rem;
+  text-align: center;
+  color: #b71c1c;
+  line-height: 1.2;
+}
+
+.letter-body {
+  font-size: 1.05rem;
+  line-height: 1.75;
+  font-weight: 500;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #3e2723;
+  margin-bottom: 1.5rem;
+  font-family: var(--font-sans);
+  overflow-y: auto;
+  max-height: 240px;
+  padding-right: 0.5rem;
+}
+
+.letter-footer {
+  text-align: right;
+  font-family: var(--font-hand);
+  font-size: 1.35rem;
+  color: #b71c1c;
+}
+
+.letter-close-btn {
+  display: block;
+  margin: 1.5rem auto 0;
+  background: linear-gradient(135deg, #d32f2f, #b71c1c);
+  color: white;
+  border: none;
+  padding: 0.75rem 2rem;
+  border-radius: 20px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(183, 28, 28, 0.3);
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.letter-close-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 15px rgba(183, 28, 28, 0.5);
+}
+
+.modal-close-btn {
+  display: block;
+  margin: 1.5rem auto 0;
+  background: linear-gradient(90deg, var(--accent-pink) 0%, var(--accent-purple) 100%);
+  color: white;
+  border: none;
+  padding: 0.75rem 2rem;
+  border-radius: 20px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(233, 30, 99, 0.3);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.modal-close-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(233, 30, 99, 0.5);
+}
+
+/* Floating Bubble Blessing Dialog Details */
+dialog#bubble-blessing-modal {
+  margin: auto;
+  border: none;
+  background: transparent;
+  outline: none;
+  z-index: 10000;
+  max-width: 480px;
+  width: 90%;
+}
+
+.modal-blessing-card {
+  background: rgba(20, 10, 32, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-radius: 24px;
+  padding: 2.25rem;
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  border-top: 3px solid var(--accent-pink);
+}
+
+.blessing-badge {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--accent-pink);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 1.25rem;
+}
+
+.blessing-avatar-large {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.15) 0%, rgba(233, 30, 99, 0.25) 100%);
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3.2rem;
+  box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+  margin-bottom: 1rem;
+}
+
+.blessing-sender {
+  font-family: var(--font-hand);
+  font-size: 1.85rem;
+  margin-bottom: 1.25rem;
+  color: var(--accent-cyan);
+  text-shadow: 0 2px 10px rgba(0, 188, 212, 0.3);
+}
+
+.blessing-content-text {
+  font-size: 1.05rem;
+  line-height: 1.7;
+  color: #e2d7f5;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 1.5rem;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  width: 100%;
+  min-height: 100px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Starting style animations for blessing modal */
+dialog#bubble-blessing-modal[open] {
+  opacity: 1;
+  transform: scale(1);
+
+  @starting-style {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+dialog#bubble-blessing-modal {
+  opacity: 0;
+  transform: scale(0.9);
+  transition: opacity 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), display 0.3s allow-discrete, overlay 0.3s allow-discrete;
+}
+
+dialog#bubble-blessing-modal::backdrop {
+  background-color: rgba(0, 0, 0, 0);
+  backdrop-filter: blur(0px);
+  transition: background-color 0.3s ease, backdrop-filter 0.3s ease, display 0.3s allow-discrete, overlay 0.3s allow-discrete;
+}
+
+dialog#bubble-blessing-modal[open]::backdrop {
+  background-color: rgba(7, 3, 13, 0.7);
+  backdrop-filter: blur(5px);
+
+  @starting-style {
+    background-color: rgba(0, 0, 0, 0);
+    backdrop-filter: blur(0px);
+  }
+}
+
+/* @starting-style Transition for Letter Dialog */
+dialog#birthday-letter[open] {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+
+  @starting-style {
+    opacity: 0;
+    transform: scale(0.85) translateY(50px);
+  }
+}
+
+dialog#birthday-letter {
+  opacity: 0;
+  transform: scale(0.85) translateY(50px);
+  transition: opacity 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), display 0.5s allow-discrete, overlay 0.5s allow-discrete;
+}
+
+dialog#birthday-letter::backdrop {
+  background-color: rgba(0, 0, 0, 0);
+  backdrop-filter: blur(0px);
+  transition: background-color 0.5s ease, backdrop-filter 0.5s ease, display 0.5s allow-discrete, overlay 0.5s allow-discrete;
+}
+
+dialog#birthday-letter[open]::backdrop {
+  background-color: rgba(7, 3, 13, 0.75);
+  backdrop-filter: blur(10px);
+
+  @starting-style {
+    background-color: rgba(0, 0, 0, 0);
+    backdrop-filter: blur(0px);
+  }
+}
+
+/* Polaroid Detail Modal */
+dialog#polaroid-detail-modal {
+  margin: auto;
+  border: none;
+  background: transparent;
+  outline: none;
+  z-index: 10000;
+  max-width: 500px;
+  width: 90%;
+}
+
+.modal-polaroid {
+  background-color: #ffffff;
+  padding: 12px 12px 36px 12px;
+  box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-polaroid-img-container {
+  width: 100%;
+  aspect-ratio: 1;
+  background-color: #eee;
+  overflow: hidden;
+  border-radius: 4px;
+  margin-bottom: 12px;
+}
+
+.modal-polaroid img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.modal-polaroid-caption {
+  font-family: var(--font-hand);
+  color: #2b2b2b;
+  font-size: 1.25rem;
+  text-align: center;
+  word-break: break-word;
+  line-height: 1.4;
+}
+
+/* @starting-style animations for Polaroid Detail Modal */
+dialog#polaroid-detail-modal[open] {
+  opacity: 1;
+  transform: scale(1);
+
+  @starting-style {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+dialog#polaroid-detail-modal {
+  opacity: 0;
+  transform: scale(0.9);
+  transition: opacity 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), display 0.3s allow-discrete, overlay 0.3s allow-discrete;
+}
+
+dialog#polaroid-detail-modal::backdrop {
+  background-color: rgba(0, 0, 0, 0);
+  backdrop-filter: blur(0px);
+  transition: background-color 0.3s ease, backdrop-filter 0.3s ease, display 0.3s allow-discrete, overlay 0.3s allow-discrete;
+}
+
+dialog#polaroid-detail-modal[open]::backdrop {
+  background-color: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+
+  @starting-style {
+    background-color: rgba(0, 0, 0, 0);
+    backdrop-filter: blur(0px);
+  }
+}
+
+/* ========================================== */
+/* Keyframes & Animations                     */
+/* ========================================== */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+}
+
+@keyframes flicker {
+  0%, 100% {
+    transform: scale(1) rotate(-1deg);
+    filter: drop-shadow(0 0 3px rgba(255, 160, 50, 0.8)) drop-shadow(0 0 8px rgba(255, 80, 0, 0.4));
+  }
+  25% {
+    transform: scale(1.08) rotate(1deg);
+    filter: drop-shadow(0 0 4px rgba(255, 170, 50, 0.9)) drop-shadow(0 0 10px rgba(255, 80, 0, 0.5));
+  }
+  50% {
+    transform: scale(0.95) rotate(-0.5deg);
+    filter: drop-shadow(0 0 3px rgba(255, 150, 50, 0.8)) drop-shadow(0 0 7px rgba(255, 80, 0, 0.3));
+  }
+  75% {
+    transform: scale(1.12) rotate(1.5deg);
+    filter: drop-shadow(0 0 5px rgba(255, 180, 60, 1)) drop-shadow(0 0 12px rgba(255, 80, 0, 0.6));
+  }
+}
+
+@keyframes rotateDisc {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes floatUp {
+  0% {
+    transform: translateY(0) translateX(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-60vh) translateX(15px) rotate(5deg);
+  }
+  100% {
+    transform: translateY(-120vh) translateX(-15px) rotate(-5deg);
+  }
+}
+
+/* ========================================== */
+/* Responsive & Adaptive Layouts              */
+/* ========================================== */
+@media (max-width: 600px) {
+  .intro-title {
+    font-size: 2.25rem;
+  }
+
+  .panel {
+    padding: 1.25rem;
+  }
+
+  .polaroid {
+    width: 150px;
+    padding: 8px 8px 24px 8px;
+  }
+
+  .polaroid-caption {
+    font-size: 0.75rem;
+  }
+
+  .cake-svg-wrapper {
+    width: 240px;
+    height: 240px;
+  }
+
+  .stage-title {
+    font-size: 1.1rem;
+    line-height: 1.4;
+  }
+
+  .screen-container.fullscreen-stage {
+    padding: 1rem;
+  }
+
+  .wish-bubble-avatar {
+    font-size: 1.4rem;
+    margin-bottom: 0.15rem;
+  }
+
+  .wish-bubble-text {
+    font-size: 0.72rem;
+    line-height: 1.3;
+    width: 90%;
+  }
+
+  .letter-envelope {
+    padding: 1.5rem;
+  }
+
+  .letter-paper {
+    padding: 1.25rem;
+  }
+
+  .letter-title {
+    font-size: 1.6rem;
+  }
+
+  .letter-body {
+    font-size: 0.95rem;
+    line-height: 1.6;
+  }
+
+  .modal-blessing-card {
+    padding: 1.5rem;
+  }
+
+  .blessing-sender {
+    font-size: 1.5rem;
+  }
+
+  .blessing-content-text {
+    font-size: 0.95rem;
+    padding: 1rem;
+  }
+}
+
+/* Reduced Motion Preference handling */
+@media (prefers-reduced-motion: reduce) {
+  .gift-box-container, .balloon, .candle-flame, #music-controller.playing .music-disc {
+    animation: none !important;
+  }
+
+  .screen-container, dialog#birthday-letter, dialog#polaroid-detail-modal, dialog#bubble-blessing-modal {
+    transition-duration: 0.1s !important;
+    transform: none !important;
+  }
+
+  @starting-style {
+    dialog#birthday-letter[open], dialog#polaroid-detail-modal[open], dialog#bubble-blessing-modal[open] {
+      transform: none !important;
+    }
+  }
+}
