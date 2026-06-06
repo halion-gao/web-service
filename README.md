@@ -81,3 +81,34 @@ npm run dev
 npm run build
 ```
 編譯完成後，檔案會輸出至 `dist/` 目錄，可直接部署至 Github Pages、Vercel 或 Firebase Hosting 上。
+
+### 4. Docker 容器化部署
+
+本專案支援使用 Docker 進行輕量化的 Nginx 容器化部署。
+
+#### 本地打包鏡像
+在專案根目錄下執行以下指令打包映像檔：
+```bash
+docker build -t ckc101-web:latest .
+```
+
+#### 上傳至 Docker Hub
+登入 Docker Hub 並為映像檔加上標籤，然後推送到您的遠端倉庫：
+```bash
+# 登入 Docker Hub
+docker login
+
+# 標記映像檔 (請將 <username> 替換為您的 Docker Hub 帳號，例如 halion0329)
+docker tag ckc101-web:latest <username>/lyn-web:latest
+
+# 推送至遠端倉庫
+docker push <username>/lyn-web:latest
+```
+
+#### 運行容器
+在任何安裝了 Docker 的環境中執行以下指令即可啟動服務：
+```bash
+# 以背景模式運行，並將容器的 80 通訊埠對應至本機的 8080 通訊埠
+docker run -d -p 8080:80 --name lyn-birthday-web <username>/lyn-web:latest
+```
+運行後在瀏覽器造訪 `http://localhost:8080` 即可檢視網頁。
