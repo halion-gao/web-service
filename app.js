@@ -18,6 +18,7 @@ let floatingBubbles = [];
 let isWishesScreenActive = false;
 let arenaWidth = 0;
 let arenaHeight = 0;
+let starsEngine = null;
 
 // Polaroid Initial Content Data (Personalized for lyn lin)
 const polaroidData = [
@@ -65,34 +66,38 @@ class AudioEngine {
     this.delayNode = null;
     this.feedbackNode = null;
     this.notes = [
+      // Section 1: Happy Birthday to you
       { note: 'G4', freq: 392.00, duration: 0.5 },
       { note: 'G4', freq: 392.00, duration: 0.5 },
-      { note: 'A4', freq: 440.00, duration: 1.0 },
+      { note: 'A4', freq: 440.00, duration: 1.0, bassFreq: 130.81, chordFreqs: [261.63, 329.63] }, // C chord: C3, C4, E4
       { note: 'G4', freq: 392.00, duration: 1.0 },
-      { note: 'C5', freq: 523.25, duration: 1.0 },
-      { note: 'B4', freq: 493.88, duration: 2.0 },
+      { note: 'C5', freq: 523.25, duration: 1.0, bassFreq: 130.81, chordFreqs: [261.63, 329.63] },
+      { note: 'B4', freq: 493.88, duration: 2.0, bassFreq: 196.00, chordFreqs: [293.66, 349.23] }, // G7 chord: G3, D4, F4
       
+      // Section 2: Happy Birthday to you
       { note: 'G4', freq: 392.00, duration: 0.5 },
       { note: 'G4', freq: 392.00, duration: 0.5 },
-      { note: 'A4', freq: 440.00, duration: 1.0 },
+      { note: 'A4', freq: 440.00, duration: 1.0, bassFreq: 196.00, chordFreqs: [293.66, 349.23] },
       { note: 'G4', freq: 392.00, duration: 1.0 },
-      { note: 'D5', freq: 587.33, duration: 1.0 },
-      { note: 'C5', freq: 523.25, duration: 2.0 },
+      { note: 'D5', freq: 587.33, duration: 1.0, bassFreq: 196.00, chordFreqs: [293.66, 392.00] },
+      { note: 'C5', freq: 523.25, duration: 2.0, bassFreq: 130.81, chordFreqs: [261.63, 329.63] }, // C chord
       
+      // Section 3: Happy Birthday dear lyn lin
       { note: 'G4', freq: 392.00, duration: 0.5 },
       { note: 'G4', freq: 392.00, duration: 0.5 },
-      { note: 'G5', freq: 783.99, duration: 1.0 },
-      { note: 'E5', freq: 659.25, duration: 1.0 },
-      { note: 'C5', freq: 523.25, duration: 1.0 },
-      { note: 'B4', freq: 493.88, duration: 1.0 },
-      { note: 'A4', freq: 440.00, duration: 2.0 },
+      { note: 'G5', freq: 783.99, duration: 1.0, bassFreq: 130.81, chordFreqs: [261.63, 329.63] },
+      { note: 'E5', freq: 659.25, duration: 1.0, bassFreq: 164.81, chordFreqs: [261.63, 329.63] }, // C/E
+      { note: 'C5', freq: 523.25, duration: 1.0, bassFreq: 130.81, chordFreqs: [261.63, 329.63] },
+      { note: 'B4', freq: 493.88, duration: 1.0, bassFreq: 146.83, chordFreqs: [293.66, 349.23] }, // G/D
+      { note: 'A4', freq: 440.00, duration: 2.0, bassFreq: 174.61, chordFreqs: [261.63, 349.23] }, // F chord
       
+      // Section 4: Happy Birthday to you
       { note: 'F5', freq: 698.46, duration: 0.5 },
       { note: 'F5', freq: 698.46, duration: 0.5 },
-      { note: 'E5', freq: 659.25, duration: 1.0 },
-      { note: 'C5', freq: 523.25, duration: 1.0 },
-      { note: 'D5', freq: 587.33, duration: 1.0 },
-      { note: 'C5', freq: 523.25, duration: 2.5 }
+      { note: 'E5', freq: 659.25, duration: 1.0, bassFreq: 130.81, chordFreqs: [261.63, 329.63] }, // C chord
+      { note: 'C5', freq: 523.25, duration: 1.0, bassFreq: 130.81 },
+      { note: 'D5', freq: 587.33, duration: 1.0, bassFreq: 196.00, chordFreqs: [293.66, 349.23] }, // G7
+      { note: 'C5', freq: 523.25, duration: 2.5, bassFreq: 130.81, chordFreqs: [261.63, 329.63] }
     ];
     this.currentNoteIndex = 0;
     this.nextNoteTime = 0;
@@ -118,7 +123,7 @@ class AudioEngine {
     this.delayNode.connect(this.context.destination);
   }
 
-  playMusicBoxNote(freq, time, duration) {
+  playMusicBoxNote(freq, time, duration, isBass = false, isChord = false) {
     if (!this.context) return;
 
     // Create primary sound oscillator
@@ -129,31 +134,70 @@ class AudioEngine {
     osc.type = 'triangle';
     osc.frequency.value = freq;
     
-    // ADSR Envelope to simulate plucking a steel comb
+    // Gain envelope
     const now = time;
     gainNode.gain.setValueAtTime(0, now);
-    // Sharp attack
-    gainNode.gain.linearRampToValueAtTime(0.35, now + 0.01);
-    // Short decay down to sustain level
-    gainNode.gain.exponentialRampToValueAtTime(0.08, now + 0.2);
-    // Ring out slowly (release)
-    gainNode.gain.setValueAtTime(0.08, now + duration - 0.2);
-    gainNode.gain.exponentialRampToValueAtTime(0.0001, now + duration + 1.2);
     
-    osc.connect(gainNode);
+    let maxGain = 0.35;
+    let decayTime = 0.2;
+    let releaseTime = 1.2;
+    
+    if (isBass) {
+      maxGain = 0.18;
+      decayTime = 0.35;
+      releaseTime = 2.0;
+      // Add low-pass filter to make bass warmer and less punchy
+      const filter = this.context.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.value = 400;
+      osc.connect(filter);
+      filter.connect(gainNode);
+    } else if (isChord) {
+      maxGain = 0.12;
+      decayTime = 0.25;
+      releaseTime = 1.5;
+      // Soft bandpass filter for chords to keep mid range sweet
+      const filter = this.context.createBiquadFilter();
+      filter.type = 'peaking';
+      filter.frequency.value = 600;
+      filter.Q.value = 1.0;
+      filter.gain.value = -3;
+      osc.connect(filter);
+      filter.connect(gainNode);
+    } else {
+      osc.connect(gainNode);
+    }
+    
+    gainNode.gain.linearRampToValueAtTime(maxGain, now + 0.01);
+    gainNode.gain.exponentialRampToValueAtTime(maxGain * 0.2, now + decayTime);
+    gainNode.gain.setValueAtTime(maxGain * 0.2, now + duration - 0.2);
+    gainNode.gain.exponentialRampToValueAtTime(0.0001, now + duration + releaseTime);
+    
     gainNode.connect(this.context.destination);
-    
-    // Also send sound to the delay effect
     gainNode.connect(this.delayNode);
     
     osc.start(now);
-    osc.stop(now + duration + 1.5);
+    osc.stop(now + duration + releaseTime + 0.3);
   }
 
   scheduler() {
     while (this.nextNoteTime < this.context.currentTime + 0.1) {
       const note = this.notes[this.currentNoteIndex];
-      this.playMusicBoxNote(note.freq, this.nextNoteTime, note.duration * 0.8);
+      
+      // Play main note
+      this.playMusicBoxNote(note.freq, this.nextNoteTime, note.duration * 0.8, false, false);
+      
+      // Play bass note if present
+      if (note.bassFreq) {
+        this.playMusicBoxNote(note.bassFreq, this.nextNoteTime, note.duration * 1.5, true, false);
+      }
+      
+      // Play chord notes if present
+      if (note.chordFreqs) {
+        note.chordFreqs.forEach(cf => {
+          this.playMusicBoxNote(cf, this.nextNoteTime, note.duration * 1.2, false, true);
+        });
+      }
       
       // Advance play pointer
       const stepDuration = note.duration * 0.75; // Control tempo speed
@@ -218,6 +262,40 @@ class AudioEngine {
     
     osc.start();
     osc.stop(this.context.currentTime + 0.1);
+  }
+
+  // Synthesize typewriter noise burst for key tick
+  playTypewriterSound() {
+    this.init();
+    if (!this.context) return;
+    
+    const now = this.context.currentTime;
+    
+    // Noise buffer
+    const bufferSize = this.context.sampleRate * 0.02; // 20ms burst
+    const buffer = this.context.createBuffer(1, bufferSize, this.context.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = Math.random() * 2 - 1;
+    }
+    
+    const noiseNode = this.context.createBufferSource();
+    noiseNode.buffer = buffer;
+    
+    const filter = this.context.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = 1800; // click resonant frequency
+    filter.Q.value = 4.0;
+    
+    const gainNode = this.context.createGain();
+    gainNode.gain.setValueAtTime(0.04, now);
+    gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.015);
+    
+    noiseNode.connect(filter);
+    filter.connect(gainNode);
+    gainNode.connect(this.context.destination);
+    
+    noiseNode.start(now);
   }
 
   // Synthesize magical sparkle chime sound for birthday card reveals
@@ -293,6 +371,33 @@ class ConfettiEngine {
         shape: Math.random() > 0.5 ? 'circle' : 'rect',
         gravity: Math.random() * 0.15 + 0.15,
         drag: 0.97
+      });
+    }
+
+    if (!this.animationFrame) {
+      this.tick();
+    }
+  }
+
+  // Spawns soap bubble popped splash particles
+  popBurst(x, y, count = 12) {
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = Math.random() * 4 + 2;
+      
+      this.particles.push({
+        x: x,
+        y: y,
+        size: Math.random() * 5 + 4,
+        color: 'rgba(255, 255, 255, 0.75)',
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        rotation: Math.random() * 360,
+        rotationSpeed: Math.random() * 4 - 2,
+        opacity: 1,
+        shape: 'bubble-droplet',
+        gravity: 0.05,
+        drag: 0.95
       });
     }
 
@@ -392,6 +497,15 @@ class ConfettiEngine {
         this.ctx.bezierCurveTo(s * 0.2, s * 1.1, s * 0.85, s * 0.7, s * 0.85, s * 0.25);
         this.ctx.bezierCurveTo(s * 0.85, -s * 0.3, s * 0.3, -s * 0.3, 0, s * 0.3);
         this.ctx.fill();
+      } else if (p.shape === 'bubble-droplet') {
+        // Draw a beautiful soap bubble droplet
+        this.ctx.beginPath();
+        this.ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2);
+        this.ctx.fillStyle = 'rgba(255, 230, 240, 0.8)';
+        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+        this.ctx.lineWidth = 1;
+        this.ctx.fill();
+        this.ctx.stroke();
       }
       
       this.ctx.restore();
@@ -402,6 +516,92 @@ class ConfettiEngine {
     } else {
       this.animationFrame = null;
     }
+  }
+}
+
+// ==========================================
+// 2B. Stars Parallax Canvas Engine
+// ==========================================
+class StarsEngine {
+  constructor(canvasId) {
+    this.canvas = document.getElementById(canvasId);
+    this.ctx = this.canvas.getContext('2d');
+    this.stars = [];
+    this.mouseX = 0;
+    this.mouseY = 0;
+    this.targetMouseX = 0;
+    this.targetMouseY = 0;
+    
+    this.resize();
+    this.initStars();
+    
+    window.addEventListener('resize', () => this.resize());
+    window.addEventListener('mousemove', (e) => {
+      this.targetMouseX = (e.clientX - window.innerWidth / 2) * 0.05;
+      this.targetMouseY = (e.clientY - window.innerHeight / 2) * 0.05;
+    });
+    
+    this.animate();
+  }
+  
+  resize() {
+    this.canvas.width = window.innerWidth;
+    this.canvas.height = window.innerHeight;
+  }
+  
+  initStars() {
+    const starCount = Math.floor((window.innerWidth * window.innerHeight) / 12000);
+    this.stars = [];
+    for (let i = 0; i < starCount; i++) {
+      this.stars.push({
+        x: Math.random() * window.innerWidth,
+        y: Math.random() * window.innerHeight,
+        size: Math.random() * 1.5 + 0.5,
+        depth: Math.random() * 0.8 + 0.2, // Parallax depth
+        alpha: Math.random() * 0.8 + 0.2,
+        twinkleSpeed: Math.random() * 0.02 + 0.005,
+        twinkleDir: Math.random() > 0.5 ? 1 : -1
+      });
+    }
+  }
+  
+  animate() {
+    this.mouseX += (this.targetMouseX - this.mouseX) * 0.08;
+    this.mouseY += (this.targetMouseY - this.mouseY) * 0.08;
+    
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    
+    this.stars.forEach(star => {
+      // Twinkle logic
+      star.alpha += star.twinkleSpeed * star.twinkleDir;
+      if (star.alpha >= 1) {
+        star.alpha = 1;
+        star.twinkleDir = -1;
+      } else if (star.alpha <= 0.1) {
+        star.alpha = 0.1;
+        star.twinkleDir = 1;
+      }
+      
+      // Calculate parallax translation
+      let drawX = star.x - this.mouseX * star.depth;
+      let drawY = star.y - this.mouseY * star.depth;
+      
+      // Wrap around bounds
+      if (drawX < 0) drawX += this.canvas.width;
+      if (drawX > this.canvas.width) drawX -= this.canvas.width;
+      if (drawY < 0) drawY += this.canvas.height;
+      if (drawY > this.canvas.height) drawY -= this.canvas.height;
+      
+      this.ctx.save();
+      this.ctx.globalAlpha = star.alpha;
+      this.ctx.fillStyle = '#ffffff';
+      this.ctx.beginPath();
+      this.ctx.arc(drawX, drawY, star.size, 0, Math.PI * 2);
+      this.ctx.fill();
+      this.ctx.restore();
+    });
+    
+    requestAnimationFrame(() => this.animate());
   }
 }
 
@@ -538,6 +738,11 @@ function onDragStart(e) {
   dragOffsetX = e.clientX - rect.left;
   dragOffsetY = e.clientY - rect.top;
   
+  // Track velocity
+  activeDragPolaroid.dragLastX = e.clientX;
+  activeDragPolaroid.dragLastTime = Date.now();
+  activeDragPolaroid.dragVelocityX = 0;
+  
   activeDragPolaroid.setPointerCapture(e.pointerId);
   activeDragPolaroid.addEventListener('pointermove', onDragMove);
   activeDragPolaroid.addEventListener('pointerup', onDragEnd);
@@ -559,8 +764,23 @@ function onDragMove(e) {
   newLeft = Math.max(-50, Math.min(newLeft, maxX));
   newTop = Math.max(-50, Math.min(newTop, maxY));
   
+  // Calculate speed / velocity
+  const now = Date.now();
+  const dt = now - activeDragPolaroid.dragLastTime || 1;
+  const dx = e.clientX - activeDragPolaroid.dragLastX;
+  activeDragPolaroid.dragVelocityX = dx / dt;
+  
+  // Dynamic rotate inertia mapping
+  const baseRot = parseFloat(activeDragPolaroid.getAttribute('data-rotation')) || 0;
+  const targetRot = baseRot + activeDragPolaroid.dragVelocityX * 35; 
+  const clampedRot = Math.max(-35, Math.min(targetRot, 35));
+  
   activeDragPolaroid.style.left = `${newLeft}px`;
   activeDragPolaroid.style.top = `${newTop}px`;
+  activeDragPolaroid.style.transform = `rotate(${clampedRot}deg)`;
+  
+  activeDragPolaroid.dragLastX = e.clientX;
+  activeDragPolaroid.dragLastTime = now;
 }
 
 function onDragEnd(e) {
@@ -571,6 +791,12 @@ function onDragEnd(e) {
   
   const rot = activeDragPolaroid.getAttribute('data-rotation');
   activeDragPolaroid.style.transform = `rotate(${rot}deg)`;
+  activeDragPolaroid.style.transition = 'transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+  
+  const currentEl = activeDragPolaroid;
+  setTimeout(() => {
+    if (currentEl) currentEl.style.transition = '';
+  }, 400);
   
   activeDragPolaroid.releasePointerCapture(e.pointerId);
   activeDragPolaroid.removeEventListener('pointermove', onDragMove);
@@ -675,7 +901,6 @@ function initFloatingWishes() {
   floatingBubbles = [];
   
   const rect = container.getBoundingClientRect();
-  // Viewport fallbacks to avoid 0px bounding box during screen active transition
   arenaWidth = rect.width;
   arenaHeight = rect.height;
   if (arenaWidth < 200) arenaWidth = window.innerWidth - 64;
@@ -685,33 +910,28 @@ function initFloatingWishes() {
     const el = document.createElement('div');
     el.className = 'wish-bubble';
     
-    // Set random bubble sizes (135px to 165px diameter for text readability)
     const diameter = Math.random() * 30 + 135;
     const radius = diameter / 2;
     el.style.width = `${diameter}px`;
     el.style.height = `${diameter}px`;
     
-    // Place randomly inside arena bounds, ensuring they spawn fully inside
     const x = Math.random() * (arenaWidth - diameter - 20) + radius + 10;
     const y = Math.random() * (arenaHeight - diameter - 20) + radius + 10;
     
-    // Set extremely slow and gentle glide drift speed (0.15 to 0.3 pixels per frame)
     const speed = Math.random() * 0.15 + 0.15;
     const angle = Math.random() * Math.PI * 2;
     const vx = Math.cos(angle) * speed;
     const vy = Math.sin(angle) * speed;
     
-    // Anonymous bubbles: No author name displayed
     el.innerHTML = `
-      <div class="wish-bubble-content">
-        <div class="wish-bubble-avatar">${wish.avatar}</div>
-        <div class="wish-bubble-text">${wish.text}</div>
-      </div>
+       <div class="wish-bubble-content">
+         <div class="wish-bubble-avatar">${wish.avatar}</div>
+         <div class="wish-bubble-text">${wish.text}</div>
+       </div>
     `;
     
-    // Tap bubble opens blessing modal details
     el.addEventListener('click', () => {
-      showBlessingDetail(wish);
+      showBlessingDetail(wish, el);
     });
     
     container.appendChild(el);
@@ -726,14 +946,12 @@ function initFloatingWishes() {
     });
   });
   
-  // Start GPU-accelerated translate3d boundary physics loops
   updateBubblesPhysics();
 }
 
 function updateBubblesPhysics() {
   if (!isWishesScreenActive) return;
   
-  // Apply a gentle repulsion force between overlapping bubbles to prevent clumping
   for (let i = 0; i < floatingBubbles.length; i++) {
     for (let j = i + 1; j < floatingBubbles.length; j++) {
       const b1 = floatingBubbles[i];
@@ -745,7 +963,6 @@ function updateBubblesPhysics() {
       const minDist = b1.radius + b2.radius;
       
       if (dist < minDist) {
-        // Resolve overlap using gentle push forces
         const overlap = minDist - dist;
         const pushX = (dx / (dist || 1)) * overlap * 0.04;
         const pushY = (dy / (dist || 1)) * overlap * 0.04;
@@ -755,7 +972,6 @@ function updateBubblesPhysics() {
         b2.vx += pushX;
         b2.vy += pushY;
         
-        // Clamp speed to keep movement extremely gentle and readable
         const limit = 0.8;
         b1.vx = Math.max(-limit, Math.min(b1.vx, limit));
         b1.vy = Math.max(-limit, Math.min(b1.vy, limit));
@@ -766,7 +982,6 @@ function updateBubblesPhysics() {
   }
   
   floatingBubbles.forEach(b => {
-    // Apply position translation
     b.x += b.vx;
     b.y += b.vy;
     
@@ -775,7 +990,6 @@ function updateBubblesPhysics() {
     const minY = b.radius;
     const maxY = arenaHeight - b.radius;
     
-    // Bounce off left/right walls with boundary clamping
     if (b.x < minX) {
       b.x = minX;
       b.vx = Math.abs(b.vx);
@@ -784,7 +998,6 @@ function updateBubblesPhysics() {
       b.vx = -Math.abs(b.vx);
     }
     
-    // Bounce off top/bottom walls with boundary clamping
     if (b.y < minY) {
       b.y = minY;
       b.vy = Math.abs(b.vy);
@@ -793,23 +1006,31 @@ function updateBubblesPhysics() {
       b.vy = -Math.abs(b.vy);
     }
     
-    // Apply GPU-accelerated coordinates
     b.el.style.transform = `translate3d(${b.x - b.radius}px, ${b.y - b.radius}px, 0)`;
   });
   
   requestAnimationFrame(updateBubblesPhysics);
 }
 
-function showBlessingDetail(wish) {
-  const modal = document.getElementById('bubble-blessing-modal');
-  document.getElementById('modal-blessing-avatar').textContent = wish.avatar;
-  document.getElementById('modal-blessing-text').textContent = wish.text;
+function showBlessingDetail(wish, bubbleEl) {
+  const rect = bubbleEl.getBoundingClientRect();
+  const centerX = rect.left + rect.width / 2;
+  const centerY = rect.top + rect.height / 2;
   
-  modal.showModal();
-  audio.playSparkleSound();
+  // Trigger popping effect and pop audio
+  audio.playPopSound();
+  confetti.popBurst(centerX, centerY, 15);
   
-  // Confetti burst for magic effect when checking blessing card
-  confetti.burst(window.innerWidth / 2, window.innerHeight * 0.3, 15);
+  setTimeout(() => {
+    const modal = document.getElementById('bubble-blessing-modal');
+    document.getElementById('modal-blessing-avatar').textContent = wish.avatar;
+    document.getElementById('modal-blessing-text').textContent = wish.text;
+    
+    modal.showModal();
+    audio.playSparkleSound();
+    
+    confetti.burst(window.innerWidth / 2, window.innerHeight * 0.3, 15);
+  }, 150);
 }
 
 window.addEventListener('resize', () => {
@@ -934,6 +1155,12 @@ function openBirthdayLetter() {
   function typeWriter() {
     if (charIdx < letterMsg.length) {
       letterBody.textContent += letterMsg.charAt(charIdx);
+      
+      const char = letterMsg.charAt(charIdx);
+      if (char !== ' ' && char !== '\n') {
+        audio.playTypewriterSound();
+      }
+      
       charIdx++;
       letterBody.scrollTop = letterBody.scrollHeight;
       setTimeout(typeWriter, 40);
@@ -973,13 +1200,56 @@ function transitionToWishesScreen() {
 // 8. Initialization On Window Load
 // ==========================================
 window.addEventListener('DOMContentLoaded', () => {
-  // Init confetti canvas engine
-  confetti = new ConfettiEngine('confetti-canvas');
+  // 1. Preload Polaroid Images
+  const imagesToPreload = [
+    'assets/party.png',
+    'assets/kitten.png',
+    'assets/scenery.png'
+  ];
+  let loadedCount = 0;
   
-  // Start background balloon generator
+  function hideLoader() {
+    const loader = document.getElementById('loading-overlay');
+    if (loader) {
+      loader.classList.add('fade-out');
+      setTimeout(() => loader.remove(), 600);
+    }
+  }
+  
+  if (imagesToPreload.length === 0) {
+    hideLoader();
+  } else {
+    imagesToPreload.forEach(src => {
+      const img = new Image();
+      img.onload = img.onerror = () => {
+        loadedCount++;
+        if (loadedCount === imagesToPreload.length) {
+          hideLoader();
+        }
+      };
+      img.src = src;
+    });
+  }
+
+  // 2. Initialize Confetti Canvas Engine
+  confetti = new ConfettiEngine('confetti-canvas');
+
+  // 3. Initialize Twinkling Starry Sky Canvas Engine
+  starsEngine = new StarsEngine('stars-canvas');
+  
+  // 4. Start background balloon generator
   startBalloonsLifecycle();
   
-  // Attach DOM Event Listeners for stage control
+  // 5. iOS Web Audio API unlock listener
+  const unlockAudio = () => {
+    if (audio.context && audio.context.state === 'suspended') {
+      audio.context.resume();
+    }
+  };
+  document.body.addEventListener('click', unlockAudio, { once: false });
+  document.body.addEventListener('touchstart', unlockAudio, { once: false });
+
+  // 6. Attach DOM Event Listeners for stage control
   document.getElementById('open-gift-btn').addEventListener('click', openInvitation);
   document.getElementById('gift-container').addEventListener('click', openInvitation);
   document.getElementById('go-to-cake-btn').addEventListener('click', goToCakeScreen);
@@ -1016,4 +1286,82 @@ window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('music-controller').addEventListener('click', () => {
     audio.toggleMusic();
   });
+
+  // 7. Add Custom Wish Modal Listeners
+  const addWishBtn = document.getElementById('add-wish-btn');
+  const customWishModal = document.getElementById('custom-wish-modal');
+  const cancelWishBtn = document.getElementById('cancel-wish-btn');
+  const submitWishBtn = document.getElementById('submit-wish-btn');
+  const customWishInput = document.getElementById('custom-wish-input');
+  
+  addWishBtn.addEventListener('click', () => {
+    customWishInput.value = '';
+    customWishModal.showModal();
+  });
+  
+  cancelWishBtn.addEventListener('click', () => {
+    customWishModal.close();
+  });
+  
+  submitWishBtn.addEventListener('click', () => {
+    const text = customWishInput.value.trim();
+    if (!text) {
+      alert('願望內容不能為空喔！🌸');
+      return;
+    }
+    
+    spawnCustomWish(text);
+    customWishModal.close();
+  });
 });
+
+// Helper function to spawn a custom created wish bubble in the arena
+function spawnCustomWish(text) {
+  const container = document.getElementById('wishes-bubbles-container');
+  if (!container) return;
+  
+  const wish = { text: text, avatar: '✨' };
+  
+  const el = document.createElement('div');
+  el.className = 'wish-bubble custom-wish';
+  
+  const diameter = 150;
+  const radius = diameter / 2;
+  el.style.width = `${diameter}px`;
+  el.style.height = `${diameter}px`;
+  
+  const x = arenaWidth / 2;
+  const y = arenaHeight / 2;
+  
+  const speed = Math.random() * 0.15 + 0.15;
+  const angle = Math.random() * Math.PI * 2;
+  const vx = Math.cos(angle) * speed;
+  const vy = Math.sin(angle) * speed;
+  
+  el.innerHTML = `
+     <div class="wish-bubble-content">
+       <div class="wish-bubble-avatar">${wish.avatar}</div>
+       <div class="wish-bubble-text">${wish.text}</div>
+     </div>
+  `;
+  
+  el.addEventListener('click', () => {
+    showBlessingDetail(wish, el);
+  });
+  
+  container.appendChild(el);
+  
+  const bubbleObj = {
+    el,
+    x,
+    y,
+    vx,
+    vy,
+    radius
+  };
+  
+  floatingBubbles.push(bubbleObj);
+  
+  audio.playSparkleSound();
+  confetti.burst(window.innerWidth / 2, window.innerHeight / 2, 25);
+}
